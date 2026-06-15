@@ -54,6 +54,37 @@ test('flags empty headings', async () => {
   })
 })
 
+test('flags Markdown in page descriptions', async () => {
+  await withTempMarkdown(`---
+title: Bad Description
+description: "- [Parse](https://example.com) returns **structured** tables | forms."
+---
+`, async (filePath) => {
+    const issues = await lintMarkdownSource({
+      filePath,
+      ...dependencies,
+    })
+
+    assert.equal(issues.some(issue => issue.ruleId === 'page-description-markdown'), true)
+  })
+})
+
+test('flags multiline page descriptions', async () => {
+  await withTempMarkdown(`---
+title: Multiline Description
+description: >
+  This should be a short plain-text sentence.
+---
+`, async (filePath) => {
+    const issues = await lintMarkdownSource({
+      filePath,
+      ...dependencies,
+    })
+
+    assert.equal(issues.some(issue => issue.ruleId === 'page-description-multiline'), true)
+  })
+})
+
 test('flags component fences converted into headings', async () => {
   await withTempMarkdown('## :::note\n', async (filePath) => {
     const issues = await lintMarkdownSource({

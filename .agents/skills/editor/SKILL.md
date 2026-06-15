@@ -11,7 +11,7 @@ Create or migrate TockDocs content **without malformed MDC** while preserving so
 
 ## Read first
 
-1. Read [`.agents/reference/architecture.md`](../../../.agents/reference/architecture.md).
+1. Read `.agents/reference/architecture.md` from the repository root.
 2. Read [`references/kb-workflow.md`](references/kb-workflow.md).
 3. Read [`references/mdc-safety.md`](references/mdc-safety.md) before touching frontmatter, component fences, slots, or embedded assets.
 4. Inspect at least one nearby page in the same KB section and locale before editing so you copy the local conventions instead of inventing new ones.
@@ -22,6 +22,7 @@ Before making substantive edits, spot-check these quality signals so you catch p
 
 - **Titles** should be 50–60 characters and unique across the KB.
 - **Descriptions** should be 120–160 characters and descriptive, not formulaic.
+- **Description frontmatter must be plain text**: no Markdown links, tables, bullets, code, bold markup, raw HTML, MDC, or copied body excerpts. The description renders directly under the page title and rich Markdown leaks into the UI as text.
 - **Headings** should use a single H1, a logical H2 → H3 hierarchy, and action verbs for guide pages ("Configure X", not "Configuration").
 - **Sections** should contain 2–15 pages. If a section has one page, merge it; if it has 20+, split it.
 - **i18n parity** — every locale folder under the same KB must have the same directory names, the same `.navigation.yml` icons, and roughly matching file counts.
@@ -68,6 +69,7 @@ Before making substantive edits, spot-check these quality signals so you catch p
 
 - Keep page frontmatter valid and minimal.
 - Use `title`, `description`, `seo`, and `navigation` only when they materially improve the page.
+- Write `description` as one concise plain-text sentence. Do not paste the first paragraph, list, table, linked text, or Markdown-formatted summary into frontmatter.
 - Keep `navigation.position`, folder ordering, and visible sidebar order consistent.
 - Update `kb.yml` when the KB id, locales, entry page, or assistant metadata changes.
 

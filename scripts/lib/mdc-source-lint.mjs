@@ -51,6 +51,15 @@ const COMPONENT_OPEN_RE = /^(:{2,})([a-z0-9][\w-]*)(?:\{[^}\n]*\})?$/i
 const COMPONENT_CLOSE_RE = /^(:{2,})$/
 const PROP_LIKE_RE = /^[a-z][\w-]*:\s*/i
 const SUSPICIOUS_COMPONENT_PROP_KEYS = new Set(['class', 'label', 'icon', 'to', 'target', 'color', 'variant', 'src', 'alt', 'width', 'height', 'loading', 'ui', 'name', 'type', 'level', 'default-value', 'defaultvalue'])
+const DESCRIPTION_MARKDOWN_PATTERNS = [
+  { pattern: /!\[[^\]\n]*\]\([^)]+\)/, label: 'images' },
+  { pattern: /\[[^\]\n]+\]\([^)]+\)/, label: 'links' },
+  { pattern: /\*\*[^*]+\*\*/, label: 'bold markup' },
+  { pattern: /`[^`]+`/, label: 'inline code' },
+  { pattern: /\|/, label: 'table pipes' },
+  { pattern: /^\s*[-*]\s+/, label: 'list markers' },
+  { pattern: /<\/?[a-z][^>]*>/i, label: 'HTML' },
+]
 
 export function walkMarkdownFiles(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -168,6 +177,67 @@ function validateYamlBlock({ filePath, rawBlock, startLine, blockLabel, parseYam
   })
 }
 
+function findFrontmatterFieldLine(rawBlock, fieldName, startLine) {
+  const lines = rawBlock.split('\n')
+  const fieldPattern = new RegExp(`^${fieldName}:`)
+  const lineIndex = lines.findIndex(line => fieldPattern.test(line.trimStart()))
+
+  if (lineIndex === -1) {
+    return null
+  }
+
+  return {
+    line: startLine + lineIndex,
+    text: lines[lineIndex],
+  }
+}
+
+function lintPageFrontmatterFields(filePath, rawBlock, startLine, parseYamlDocument) {
+  const issues = []
+  const document = parseYamlDocument(rawBlock, { prettyErrors: true })
+
+  if (document.errors.length > 0) {
+    return issues
+  }
+
+  const frontmatter = document.toJS() || {}
+  const description = frontmatter.description
+
+  if (description === undefined || description === null) {
+    return issues
+  }
+
+  const descriptionField = findFrontmatterFieldLine(rawBlock, 'description', startLine) || {
+    line: startLine,
+    text: '',
+  }
+
+  if (typeof description !== 'string') {
+    issues.push(createIssue(filePath, 'page-description-not-string', 'page frontmatter description must be a plain text string.', descriptionField.line, 1))
+    return issues
+  }
+
+  if (/^\s*description:\s*[>|]/.test(descriptionField.text) || description.includes('\n')) {
+    issues.push(createIssue(filePath, 'page-description-multiline', 'page frontmatter description must be one plain-text sentence, not multiline Markdown.', descriptionField.line, 1))
+  }
+
+  const matchedPatterns = DESCRIPTION_MARKDOWN_PATTERNS
+    .filter(({ pattern }) => pattern.test(description))
+    .map(({ label }) => label)
+
+  if (matchedPatterns.length > 0) {
+    issues.push(createIssue(
+      filePath,
+      'page-description-markdown',
+      `page frontmatter description must be plain text; remove Markdown ${matchedPatterns.join(', ')}.`,
+      descriptionField.line,
+      1,
+    ))
+  }
+
+  return issues
+}
+
 function lintSourceStructure(filePath, rawSource, parseYamlDocument) {
   const issues = []
   const lines = rawSource.split('\n')
@@ -190,6 +260,7 @@ function lintSourceStructure(filePath, rawSource, parseYamlDocument) {
         blockLabel: 'page-frontmatter',
         parseYamlDocument,
       }))
+      issues.push(...lintPageFrontmatterFields(filePath, pageFrontmatter, 2, parseYamlDocument))
       bodyStartIndex = pageFrontmatterEnd + 1
     }
   }

@@ -107,6 +107,7 @@ These are the patterns the source linter catches or that commonly break TockDocs
 
 - **Missing `u-` prefix on Nuxt UI components.** `::page-hero` silently fails to render; use `::u-page-hero`. This is the most common TockDocs MDC error. Note: Nuxt Content components (`::code-group`, `::steps`, `::note`, `::tip`, `::warning`, `::caution`) do **not** need the prefix — only Nuxt UI components (`u-page-hero`, `u-button`, `u-badge`, `u-color-mode-image`, etc.) require it.
 - Unclosed page frontmatter fences (`---`).
+- Markdown-rich `description` frontmatter. Descriptions render under page titles as plain text, so keep them to one concise sentence with no links, bullets, tables, code, bold markup, raw HTML, or copied body excerpts.
 - Invalid component fences or trailing text on the same line as a component opener.
 - Blank lines between a component opener and its component frontmatter.
 - Unclosed component frontmatter fences.
