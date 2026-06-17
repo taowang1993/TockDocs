@@ -19,9 +19,6 @@
       "claude": "Ava Claude'is"
     },
     "links": "Kogukond",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "Sellel lehel",
     "menu": "Menüü",
     "report": "Teata probleemist",

@@ -19,9 +19,6 @@
       "claude": "Odpri v Claude"
     },
     "links": "Skupnost",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "Na tej strani",
     "menu": "Meni",
     "report": "Prijavi težavo",

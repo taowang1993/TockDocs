@@ -19,9 +19,6 @@
       "claude": "Deschide în Claude"
     },
     "links": "Comunitate",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "Pe această pagină",
     "menu": "Meniu",
     "report": "Raportează o problemă",

@@ -20,7 +20,7 @@ This tool is knowledge-base aware. In multi-KB sites you can scope results with 
     openWorldHint: false,
   },
   inputSchema: {
-    kb: z.string().optional().describe('Optional knowledge base id to scope results (for example: "platform" or "parser").'),
+    kb: z.string().optional().describe('Optional knowledge base id to scope results (for example: "manual" or "chemistry").'),
     locale: z.string().optional().describe('Optional locale code to scope results (for example: "en" or "fr").'),
   },
   inputExamples: [

@@ -7,8 +7,8 @@ const { title, description, variant } = defineProps<{
 
 const variants: Record<string, { icon: string, gradient: string }> = {
   chemistry: { icon: '🧪', gradient: 'from-emerald-500/30 via-green-500/20 to-teal-500/30' },
+  investing: { icon: '📈', gradient: 'from-amber-500/30 via-orange-500/20 to-red-500/30' },
   manual: { icon: '📘', gradient: 'from-blue-500/30 via-indigo-500/20 to-violet-500/30' },
-  parser: { icon: '📄', gradient: 'from-amber-500/30 via-orange-500/20 to-red-500/30' },
 }
 const v = variants[variant || 'chemistry'] || variants.chemistry!
 </script>

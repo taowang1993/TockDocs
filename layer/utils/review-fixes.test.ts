@@ -163,13 +163,13 @@ test('switchKnowledgeBaseInPath preserves the current locale when the target kno
           entry: 'getting-started/installation',
         },
         {
-          id: 'parser',
-          title: 'Parser',
+          id: 'chemistry',
+          title: 'Chemistry',
           description: '',
-          icon: 'i-lucide-book-open',
-          defaultLocale: 'en',
-          locales: ['en'],
-          entry: 'parser/best-document-parsing-apis-2026',
+          icon: 'i-lucide-flask-conical',
+          defaultLocale: 'zh',
+          locales: ['zh'],
+          entry: 'atomic-structure/electron-configuration',
         },
       ],
     },
@@ -181,8 +181,8 @@ test('switchKnowledgeBaseInPath preserves the current locale when the target kno
   )
 
   assert.equal(
-    switchKnowledgeBaseInPath('/docs/platform/fr/getting-started/installation', 'parser', config),
-    '/docs/parser/en/parser/best-document-parsing-apis-2026',
+    switchKnowledgeBaseInPath('/docs/platform/fr/getting-started/installation', 'chemistry', config),
+    '/docs/chemistry/zh/atomic-structure/electron-configuration',
   )
 })
 

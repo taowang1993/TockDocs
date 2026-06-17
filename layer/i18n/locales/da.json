@@ -19,9 +19,6 @@
       "claude": "Åbn i Claude"
     },
     "links": "Fællesskab",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "På denne side",
     "menu": "Menu",
     "report": "Rapporter et problem",

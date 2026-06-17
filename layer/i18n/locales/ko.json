@@ -19,9 +19,6 @@
       "claude": "Claude에서 열기"
     },
     "links": "커뮤니티",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "이 페이지에서",
     "menu": "메뉴",
     "report": "문제 신고",

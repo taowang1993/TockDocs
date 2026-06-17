@@ -19,9 +19,6 @@
       "claude": "Claude'da aç"
     },
     "links": "Topluluk",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "Bu sayfada",
     "menu": "Menü",
     "report": "Sorun bildir",

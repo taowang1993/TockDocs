@@ -19,9 +19,6 @@
       "claude": "פתח ב-Claude"
     },
     "links": "קהילה",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "בעמוד זה",
     "menu": "תפריט",
     "report": "דווח על בעיה",

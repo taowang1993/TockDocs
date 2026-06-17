@@ -16,30 +16,6 @@ export default defineAppConfig({
   github: {
     rootDir: 'docs',
   },
-  toc: {
-    bottom: {
-      links: [
-        {
-          icon: 'i-lucide-book-open',
-          label: 'docs.links-ui',
-          to: 'https://ui.nuxt.com/getting-started/installation/nuxt',
-          target: '_blank',
-        },
-        {
-          icon: 'i-lucide-book-open',
-          label: 'docs.links-content',
-          to: 'https://content.nuxt.com/docs/getting-started/installation/',
-          target: '_blank',
-        },
-        {
-          icon: 'i-lucide-book-open',
-          label: 'docs.links-studio',
-          to: 'https://nuxt.studio/introduction',
-          target: '_blank',
-        },
-      ],
-    },
-  },
   ui: {
     pageHero: {
       slots: {

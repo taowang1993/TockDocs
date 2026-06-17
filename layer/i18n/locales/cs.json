@@ -19,9 +19,6 @@
       "claude": "Otevřít v Claude"
     },
     "links": "Komunita",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "Na této stránce",
     "menu": "Nabídka",
     "report": "Nahlásit problém",

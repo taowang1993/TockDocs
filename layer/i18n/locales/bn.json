@@ -19,9 +19,6 @@
       "claude": "Claude এ খুলুন"
     },
     "links": "কমিউনিটি",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "এই পেজে",
     "menu": "মেনু",
     "report": "সমস্যা রিপোর্ট করুন",

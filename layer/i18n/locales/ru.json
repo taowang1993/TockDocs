@@ -19,9 +19,6 @@
       "claude": "Открыть в Claude"
     },
     "links": "Сообщество",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "На этой странице",
     "menu": "Меню",
     "report": "Сообщить о проблеме",

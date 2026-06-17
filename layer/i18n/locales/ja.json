@@ -19,9 +19,6 @@
       "claude": "Claudeで開く"
     },
     "links": "コミュニティ",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "このページの内容",
     "menu": "メニュー",
     "report": "問題を報告",

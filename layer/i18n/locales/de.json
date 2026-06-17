@@ -19,9 +19,6 @@
       "claude": "In Claude öffnen"
     },
     "links": "Community",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "Auf dieser Seite",
     "menu": "Menü",
     "report": "Problem melden",

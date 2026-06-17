@@ -19,9 +19,6 @@
       "claude": "Отваряне в Claude"
     },
     "links": "Общност",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "На тази страница",
     "menu": "Меню",
     "report": "Докладване на проблем",

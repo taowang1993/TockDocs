@@ -12,7 +12,7 @@ function ctx(currentMode: EditorMode, overrideActive = false, previousMode: Edit
 test('computeStudioEditorAction — fresh session, non-chemistry page → no-op', () => {
   assert.equal(computeStudioEditorAction('/docs/manual/en/start', ctx('tiptap')), null)
   assert.equal(computeStudioEditorAction('/', ctx('code')), null)
-  assert.equal(computeStudioEditorAction('/docs/parser/en/start', ctx('tiptap')), null)
+  assert.equal(computeStudioEditorAction('/docs/investing/zh/start', ctx('tiptap')), null)
 })
 
 test('computeStudioEditorAction — entering chemistry from tiptap → remember and force code', () => {

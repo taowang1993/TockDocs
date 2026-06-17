@@ -19,9 +19,6 @@
       "claude": "Mở trong Claude"
     },
     "links": "Cộng đồng",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "Trên trang này",
     "menu": "Menu",
     "report": "Báo cáo sự cố",

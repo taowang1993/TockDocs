@@ -19,9 +19,6 @@
       "claude": "Buka di Claude"
     },
     "links": "Komunitas",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "Pada halaman ini",
     "menu": "Menu",
     "report": "Laporkan masalah",

@@ -19,9 +19,6 @@
       "claude": "Ouvrir dans Claude"
     },
     "links": "Communauté",
-    "links-ui": "Nuxt UI",
-    "links-content": "Nuxt Content",
-    "links-studio": "Nuxt Studio",
     "toc": "Sur cette page",
     "menu": "Menu",
     "report": "Signaler un problème",

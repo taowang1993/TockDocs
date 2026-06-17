@@ -1,0 +1,10 @@
+id: investing
+title: 定投改变命运
+description: 李笑来关于定投策略、长期主义、标的选择、心理建设与 BOX 的开源书籍。
+icon: i-lucide-trending-up
+defaultLocale: zh
+entry: book/preface
+locales:
+  - zh
+assistantName: 定投助手
+searchPlaceholder: 搜索定投笔记...

@@ -19,9 +19,6 @@
       "claude": "Άνοιγμα στο Claude"
     },
     "links": "Κοινότητα",
-    "links-ui": "Nuxt UI docs",
-    "links-content": "Nuxt Content docs",
-    "links-studio": "Nuxt Studio docs",
     "toc": "Σε αυτή τη σελίδα",
     "menu": "Μενού",
     "report": "Αναφορά προβλήματος",
