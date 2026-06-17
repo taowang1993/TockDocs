@@ -36,9 +36,15 @@ echo "==> Building TockDocs for Vercel (NITRO_PRESET=vercel, NUXT_SITE_URL=$NUXT
 cd "$DOCS_DIR"
 NUXT_SITE_URL="$NUXT_SITE_URL" NITRO_PRESET=vercel NODE_OPTIONS=--max-old-space-size=10240 npx nuxt build
 
+FUNCTION_DIR="$DOCS_DIR/.vercel/output/functions/__fallback.func"
+
+echo ""
+echo "==> Pruning unsupported sharp binaries from prebuilt Vercel function..."
+node "$PROJECT_DIR/scripts/prune-vercel-sharp-output.mjs" "$FUNCTION_DIR"
+
 echo ""
 echo "==> Validating build output..."
-SERVER_MJS="$DOCS_DIR/.vercel/output/functions/__fallback.func/chunks/build/server.mjs"
+SERVER_MJS="$FUNCTION_DIR/chunks/build/server.mjs"
 if ! grep -q "entry_default as default" "$SERVER_MJS" 2>/dev/null; then
   echo "ERROR: server.mjs is missing the production SSR entry (entry_default as default)."
   echo "The build may have produced a development-mode server bundle."
@@ -50,7 +56,16 @@ if grep -q "vite-node-entry" "$SERVER_MJS" 2>/dev/null; then
   echo "This indicates the production build did not inline the server entry."
   exit 1
 fi
-echo "    Build output validated."
+FUNCTION_SIZE_KB=$(du -sk "$FUNCTION_DIR" | awk '{ print $1 }')
+MAX_FUNCTION_SIZE_KB=$((250 * 1024))
+if (( FUNCTION_SIZE_KB > MAX_FUNCTION_SIZE_KB )); then
+  FUNCTION_SIZE_MB=$(( (FUNCTION_SIZE_KB + 1023) / 1024 ))
+  echo "ERROR: prebuilt Vercel function is ${FUNCTION_SIZE_MB} MB unzipped, above the 250 MB limit."
+  echo "Run: find \"$FUNCTION_DIR\" -type f -size +1M -print0 | xargs -0 ls -lh | sort -k5 -hr | head -40"
+  exit 1
+fi
+FUNCTION_SIZE_MB=$(( (FUNCTION_SIZE_KB + 1023) / 1024 ))
+echo "    Build output validated (${FUNCTION_SIZE_MB} MB function)."
 
 echo ""
 echo "==> Copying build output to repo root (rootDirectory=docs quirk)..."

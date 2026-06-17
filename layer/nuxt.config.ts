@@ -6,6 +6,7 @@ import { CONTENT_SOURCE_ASSET_BASE_NAME, CONTENT_SOURCE_ASSET_PATTERN } from './
 import { getKnowledgeBaseEntrySlug } from './utils/docs'
 import { inferSiteURL, trimTrailingSlash } from './utils/meta'
 import { getTockDocsContentConfiguration } from './utils/knowledge-bases'
+import { shouldIgnoreNitroSharpTrace } from './utils/vercel-sharp'
 
 const { resolve } = createResolver(import.meta.url)
 const DevPort = 4987
@@ -103,14 +104,6 @@ function getConfiguredAssistantProviderFromEnv() {
 }
 
 const configuredAssistantProvider = getConfiguredAssistantProviderFromEnv()
-
-function shouldIgnoreNitroSharpTrace(path: string) {
-  // Nitro traces sharp's optional wasm/build helper packages even when pnpm
-  // skips installing them for the current platform. nft passes relative paths
-  // (the pnpm store may produce two shapes for the same missing package), so
-  // we check for a substring match rather than an exact path or glob.
-  return path.includes('@img/sharp-wasm32') || path.includes('@img/sharp-libvips-dev')
-}
 
 function resolveIconScanInclude(rootDir: string, srcDir: string) {
   return [...new Set([
