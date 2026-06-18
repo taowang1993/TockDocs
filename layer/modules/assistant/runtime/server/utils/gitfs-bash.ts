@@ -14,6 +14,8 @@ const DEFAULT_GITFS_ROOT = 'docs/content'
 const DEFAULT_GITFS_CACHE_DIR = '/tmp/gitfs-cache'
 const DEFAULT_GITFS_WORKSPACE_ROOT = '/tmp/tockdocs-assistant-workspace'
 const GITFS_BASH_TIMEOUT_MS = 30_000
+const DEFAULT_GITFS_PREFETCH_FILE_LIMIT = 80
+const DEFAULT_GITFS_PREFETCH_CONCURRENCY = 8
 const ALLOWED_GITFS_ROOTS = ['/repo', '/workspace'] as const
 
 export interface GitFsBashOptions {
@@ -25,6 +27,8 @@ export interface GitFsBashOptions {
   cacheDir?: string
   workspaceRoot?: string
   fetch?: typeof globalThis.fetch
+  prefetchFileLimit?: number
+  prefetchConcurrency?: number
 }
 
 export type GitFsBashContext = {
@@ -221,6 +225,62 @@ export async function executeGitFsCommand(bash: JustBash, command: string, timeo
   }
 }
 
+function normalizePositiveInteger(value: number | undefined, fallback: number) {
+  return Number.isFinite(value) && value && value > 0
+    ? Math.floor(value)
+    : fallback
+}
+
+async function prefetchGitFsFiles(repoFs: GitRepoFilesystem, options: Pick<GitFsBashOptions, 'prefetchFileLimit' | 'prefetchConcurrency'>) {
+  const prefetchStartedAt = performance.now()
+  const allPaths = repoFs.getAllPaths()
+  const prefetchFileLimit = normalizePositiveInteger(options.prefetchFileLimit, DEFAULT_GITFS_PREFETCH_FILE_LIMIT)
+  const prefetchConcurrency = normalizePositiveInteger(options.prefetchConcurrency, DEFAULT_GITFS_PREFETCH_CONCURRENCY)
+  const candidatePaths = allPaths
+    .filter(p => p !== '/' && !p.endsWith('/'))
+    .slice(0, prefetchFileLimit)
+
+  let prefetchedCount = 0
+  let skippedCount = 0
+
+  for (let index = 0; index < candidatePaths.length; index += prefetchConcurrency) {
+    const chunk = candidatePaths.slice(index, index + prefetchConcurrency)
+    const results = await Promise.allSettled(
+      chunk.map(async (p) => {
+        try {
+          await repoFs.readFile(p)
+          return true
+        }
+        catch {
+          // Directories throw EISDIR; silently skip non-file entries.
+          return false
+        }
+      }),
+    )
+
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) {
+        prefetchedCount += 1
+      }
+      else {
+        skippedCount += 1
+      }
+    }
+  }
+
+  const prefetchMs = Number((performance.now() - prefetchStartedAt).toFixed(1))
+  logGitFs('gitfs_prefetch', {
+    fileCount: allPaths.length,
+    candidateCount: candidatePaths.length,
+    prefetchFileLimit,
+    prefetchConcurrency,
+    prefetchedCount,
+    skippedCount,
+    omittedCount: Math.max(0, allPaths.length - candidatePaths.length),
+    durationMs: prefetchMs,
+  })
+}
+
 export async function createGitFsBash(options: GitFsBashOptions): Promise<GitFsBashContext> {
   const startedAt = performance.now()
   const cacheDir = options.cacheDir ?? DEFAULT_GITFS_CACHE_DIR
@@ -244,25 +304,10 @@ export async function createGitFsBash(options: GitFsBashOptions): Promise<GitFsB
     cache: new PersistentGitFsCache({ dir: cacheDir }),
   })
 
-  // Pre-fetch all file blobs in parallel so the first rg / cat command
-  // doesn't pay the per-blob GitHub API latency penalty serially.
-  const prefetchStartedAt = performance.now()
-  const allPaths = repoFs.getAllPaths()
-  const prefetchResults = await Promise.allSettled(
-    allPaths
-      .filter(p => p !== '/' && !p.endsWith('/'))
-      .map(async (p) => {
-        try {
-          await repoFs.readFile(p)
-        }
-        catch {
-          // Directories throw EISDIR; silently skip non-file entries.
-        }
-      }),
-  )
-  const prefetchedCount = prefetchResults.filter(r => r.status === 'fulfilled').length
-  const prefetchMs = Number((performance.now() - prefetchStartedAt).toFixed(1))
-  logGitFs('gitfs_prefetch', { fileCount: allPaths.length, prefetchedCount, durationMs: prefetchMs })
+  // Warm a bounded number of file blobs so the first rg / cat command
+  // avoids a cold-cache penalty without letting one public request fan out
+  // across an entire repository tree.
+  await prefetchGitFsFiles(repoFs, options)
 
   const fs = new MountableFs({ base: new InMemoryFs() })
   fs.mount('/repo', repoFs)

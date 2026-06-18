@@ -230,6 +230,7 @@ Composable for syntax highlighting code blocks with Shiki.
 - Built-in TockDocs `get-page` tool plus generated `INDEX.md` assets when `assistantFsBackend='index'`
 - Server credentials for one supported provider, or Vercel AI Gateway auth
 - Optional `NUXT_PUBLIC_ASSISTANT_ENABLED=true` to expose the UI explicitly in production
+- Optional server-only request guardrail env vars: `ASSISTANT_RATE_LIMIT_MAX_REQUESTS`, `ASSISTANT_RATE_LIMIT_WINDOW_MS`, `ASSISTANT_MAX_BODY_BYTES`, `ASSISTANT_MAX_MESSAGES`, `ASSISTANT_MAX_MESSAGE_TEXT_CHARS`, and `ASSISTANT_MAX_TOTAL_TEXT_CHARS`
 
 ## Customization
 
@@ -242,7 +243,7 @@ The assistant supports three retrieval backends:
   - `list-pages` — structure browsing by page metadata
   - `get-page` — full markdown retrieval for a specific page
 - **`assistantFsBackend: 'index'`** — injects a generated `INDEX.md` into the system prompt and exposes only `get-page`
-- **`assistantFsBackend: 'gitfs'`** — mounts the docs as a read-only filesystem and gives the model a `bash` tool for `grep`, `rg`, `find`, `ls`, and `cat`
+- **`assistantFsBackend: 'gitfs'`** — mounts the scoped docs subtree as a read-only filesystem and gives the model a `bash` tool for `grep`, `rg`, `find`, `ls`, and `cat`
 
 With the default MCP backend, the assistant is prompted to:
 
@@ -280,6 +281,12 @@ The INDEX backend injects a generated documentation index into the system prompt
 | **Best For** | General purpose, any size | Small–medium KBs, fastest path | Auto-scaling, no build needed |
 
 **Fallback behavior:** The INDEX backend automatically falls back to MCP when the generated index exceeds the 8K token budget, or when no index exists for the requested scope. This keeps large KBs functional without manual intervention.
+
+### Request Guardrails
+
+The assistant endpoint accepts `POST` requests only. It rejects cross-origin browser requests, validates body and message sizes before model work, requires valid KB scope in knowledge-base mode, and rate-limits requests by client IP.
+
+In knowledge-base mode, request scope is resolved from a same-origin referer first, then from validated `X-TockDocs-KB` and `X-TockDocs-Locale` headers. GitFS mounts only the resolved KB/locale subtree, and eager GitFS prefetch is capped to avoid unbounded startup fan-out.
 
 ### System Prompt
 

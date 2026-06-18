@@ -127,21 +127,24 @@ Important behavior:
 
 For each request it:
 
-1. reads `messages` from the request body
-2. derives KB / locale scope from the request `referer` via `resolveDocsRoute()`
-3. resolves the provider + model via `getAssistantProviderConfig()`
-4. determines the active backend from `ASSISTANT_FS_BACKEND` (default `mcp`)
-5. **INDEX path:** fetches `INDEX.md` for the scoped KB/locale, estimates tokens, injects it into the system prompt. Falls back to MCP when the index is missing, fails to load, or exceeds the 8K token budget.
-6. **MCP path:** appends `kb` / `locale` query params to the MCP transport URL and loads tools with a `30s` connect timeout
-7. **GitFS path:** initializes GitFS + just-bash, mounts `docs/content/<kb>/<locale>` at `/repo`, and exposes a single `bash` tool
-8. runs `streamText()` with the backend-specific tool set and system prompt, returns `createUIMessageStreamResponse()`
-9. cleans up resources (MCP client close or workspace directory removal) and logs duration / tool counts on finish
+1. rejects non-`POST` requests
+2. rejects cross-origin browser requests from the `Origin` / `Sec-Fetch-Site` headers
+3. enforces request-size and message-shape limits before provider or retrieval work starts
+4. rate-limits requests by client IP and returns `Retry-After` on `429`
+5. resolves KB / locale scope from a same-origin `referer`, falling back to validated `X-TockDocs-KB` / `X-TockDocs-Locale` headers
+6. resolves the provider + model via `getAssistantProviderConfig()`
+7. determines the active backend from `ASSISTANT_FS_BACKEND` (default `mcp`)
+8. **INDEX path:** fetches `INDEX.md` for the scoped KB/locale, estimates tokens, injects it into the system prompt. Falls back to MCP when the index is missing, fails to load, or exceeds the 8K token budget.
+9. **MCP path:** appends `kb` / `locale` query params to the MCP transport URL and loads tools with a `30s` connect timeout
+10. **GitFS path:** initializes GitFS + just-bash, mounts the scoped docs root at `/repo`, and exposes a single `bash` tool
+11. runs `streamText()` with the backend-specific tool set and system prompt, returns `createUIMessageStreamResponse()`
+12. cleans up resources (MCP client close or workspace directory removal) and logs duration / tool counts on finish
 
-If there is no usable `referer`, the assistant falls back to:
+Scope fallback behavior:
 
-- `kb = undefined`
-- `locale = default locale`
-- GitFS mounts `docs/content` (the full content tree) when there is no KB scope
+- KB mode requires a valid KB scope from either the same-origin referer or validated headers; missing or invalid KB scope returns `400` before retrieval.
+- Legacy mode falls back to the default locale when no usable referer or locale header exists.
+- GitFS in KB mode requires both KB and locale scope and mounts only `docs/content/<kb>/<locale>`.
 
 ### System Prompt
 
@@ -227,10 +230,11 @@ When `ASSISTANT_FS_BACKEND=gitfs`, the assistant mounts `docs/content/<kb>/<loca
 - `cat` — read full content
 - `grep -r` — recursive search
 
-**Scope enforcement:**
+**Scope enforcement and resource bounds:**
 
 - the mount root is the KB/locale subtree, so the model cannot `ls` or `cat` outside it
 - parent-directory traversal and absolute paths outside `/repo` or `/workspace` are blocked in `validateGitFsCommand()`
+- eager blob prefetch is capped to 80 files and 8 concurrent reads by default
 - a `PersistentGitFsCache` in `/tmp/gitfs-cache` keeps warm invocations fast
 
 ### Source Markdown Pipeline
@@ -309,5 +313,6 @@ OpenRouter adds `HTTP-Referer` and `X-Title` headers when the configured site UR
 
 - Assistant UI is always enabled in dev. In production, it requires credentials or `NUXT_PUBLIC_ASSISTANT_ENABLED=true`. Without a configured provider, the endpoint returns `503`.
 - Assistant state is scoped to the active KB/locale, not shared globally.
+- Request guardrails are configured with `ASSISTANT_RATE_LIMIT_MAX_REQUESTS`, `ASSISTANT_RATE_LIMIT_WINDOW_MS`, `ASSISTANT_MAX_BODY_BYTES`, `ASSISTANT_MAX_MESSAGES`, `ASSISTANT_MAX_MESSAGE_TEXT_CHARS`, and `ASSISTANT_MAX_TOTAL_TEXT_CHARS`.
 - The `toolCallCount` in logs reveals the retrieval path: `0` = greeting/meta, `1` = index scan or MCP excerpt answer, `2` = MCP search + fetch, `3+` = retries.
 - Log prefixes: `[tockdocs-assistant]` (request lifecycle), `[tockdocs-docs-search]` (search), `[tockdocs-mcp-scope]` (scope resolution).

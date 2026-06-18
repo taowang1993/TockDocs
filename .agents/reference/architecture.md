@@ -226,7 +226,7 @@ Search and assistant behavior are coupled through three backends, selected with 
 - `layer/modules/assistant/runtime/server/utils/system-prompt.ts` — per-backend system prompts
 - The model explores docs with `rg`, `find`, `ls`, `cat` inside the scoped subtree
 
-Both backends enforce KB/locale scope: the assistant endpoint derives the active KB + locale from the request referer and gates all retrieval to that scope.
+All assistant backends enforce KB/locale scope: the assistant endpoint prefers a same-origin request referer, falls back to validated `X-TockDocs-KB` / `X-TockDocs-Locale` headers, and gates retrieval to that scope before any model or tool work starts.
 
 Search (used by MCP tools) is a hybrid pipeline:
 

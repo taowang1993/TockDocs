@@ -1,0 +1,14 @@
+{
+  "ignorePaths": [
+    ".env",
+    ".env.*",
+    "**/.env",
+    "**/.env.*",
+    ".deepsec/**",
+    ".nuxt/**",
+    ".data/**",
+    ".vercel/**",
+    ".output/**",
+    "**/*.log"
+  ]
+}

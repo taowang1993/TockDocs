@@ -2,12 +2,24 @@ import { rm } from 'node:fs/promises'
 import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, streamText } from 'ai'
 import type { ToolCallPart, ToolSet, UIMessageStreamWriter } from 'ai'
 import { createMCPClient } from '@ai-sdk/mcp'
-import type { H3Event } from 'h3'
-import { getDefaultLocale, resolveDocsRoute, resolveKnowledgeBaseLocale } from '../../../../../utils/docs'
+import { assertMethod, createError, getRequestHeader, getRequestIP, getRequestURL, readValidatedBody, setHeader, type H3Event } from 'h3'
+import type { TockDocsPublicRuntimeConfig } from '../../../../../utils/docs'
 import { INDEX_TOKEN_BUDGET, estimateIndexTokenCount, resolveIndexScope } from '../../../../../server/utils/index-generator'
 import { createAssistantChatModel, getAssistantProviderConfig } from '../utils/ai-provider'
 import { createBashTool, createGitFsBash, createGitFsUrlTransform, createRepoPathToUrlMapper } from '../utils/gitfs-bash'
 import { getGitFsSystemPrompt, getIndexSystemPrompt, getMcpSystemPrompt } from '../utils/system-prompt'
+import {
+  checkAssistantRateLimit,
+  getAssistantRateLimitOptions,
+  getAssistantRequestLimits,
+  resolveAssistantRequestScope,
+  validateAssistantContentLength,
+  validateAssistantRequestBody,
+  validateAssistantRequestOrigin,
+  type AssistantGuardFailure,
+  type AssistantRequestBody,
+  type AssistantScope,
+} from '../utils/request-guards'
 
 const MAX_STEPS = 10
 const MCP_CLIENT_TIMEOUT_MS = 30_000
@@ -75,56 +87,57 @@ function stopWhenResponseComplete({ steps }: { steps: any[] }): boolean {
   return false
 }
 
-function getAssistantScope(event: H3Event) {
-  const config = useRuntimeConfig(event).public as Parameters<typeof resolveDocsRoute>[1]
-  const headerKb = getRequestHeader(event, 'X-TockDocs-KB')
-  const headerLocale = getRequestHeader(event, 'X-TockDocs-Locale')
+function throwAssistantGuardFailure(result: AssistantGuardFailure): never {
+  throw createError({
+    statusCode: result.statusCode,
+    statusMessage: result.statusMessage,
+  })
+}
 
-  // Prefer explicit headers sent by the UI (robust across bookmarks, new tabs, etc.)
-  if (headerKb || headerLocale) {
-    const knowledgeBases = (config.tockdocs as Record<string, unknown>)?.knowledgeBases as Array<{ id: string }> | undefined
-    const kb = headerKb && knowledgeBases?.some(k => k.id === headerKb)
-      ? headerKb
-      : undefined
-    const locale = headerLocale || getDefaultLocale(config)
+function assertAssistantGuard(result: { ok: true } | AssistantGuardFailure) {
+  if (!result.ok) {
+    throwAssistantGuardFailure(result)
+  }
+}
 
-    return {
-      kb,
-      locale: kb
-        ? resolveKnowledgeBaseLocale(config, kb, locale)
-        : locale,
-      scopeLabel: kb ? `${kb}${locale ? `/${locale}` : ''}` : undefined,
+function getAssistantRateLimitKey(event: H3Event) {
+  return getRequestIP(event, { xForwardedFor: true })
+    || getRequestHeader(event, 'x-real-ip')
+    || getRequestHeader(event, 'cf-connecting-ip')
+    || 'unknown'
+}
+
+async function readAssistantRequestBody(event: H3Event) {
+  const limits = getAssistantRequestLimits()
+
+  assertAssistantGuard(validateAssistantContentLength(getRequestHeader(event, 'content-length'), limits.maxBodyBytes))
+
+  return await readValidatedBody<AssistantRequestBody>(event, (body) => {
+    const validation = validateAssistantRequestBody(body, limits)
+
+    if (!validation.ok) {
+      throwAssistantGuardFailure(validation)
     }
+
+    return validation.body as AssistantRequestBody
+  })
+}
+
+function getAssistantScope(event: H3Event): AssistantScope {
+  const config = useRuntimeConfig(event).public as TockDocsPublicRuntimeConfig
+  const result = resolveAssistantRequestScope({
+    config,
+    requestOrigin: getRequestURL(event).origin,
+    referer: getRequestHeader(event, 'referer'),
+    headerKb: getRequestHeader(event, 'X-TockDocs-KB'),
+    headerLocale: getRequestHeader(event, 'X-TockDocs-Locale'),
+  })
+
+  if (!result.ok) {
+    throwAssistantGuardFailure(result)
   }
 
-  // Fallback to Referer header for backward compatibility
-  const referer = getRequestHeader(event, 'referer')
-
-  if (!referer) {
-    return {
-      kb: undefined,
-      locale: getDefaultLocale(config),
-      scopeLabel: undefined,
-    }
-  }
-
-  try {
-    const refererPath = new URL(referer).pathname
-    const resolved = resolveDocsRoute(refererPath, config)
-
-    return {
-      kb: resolved.kb,
-      locale: resolved.locale || getDefaultLocale(config),
-      scopeLabel: resolved.kb ? `${resolved.kb}${resolved.locale ? `/${resolved.locale}` : ''}` : undefined,
-    }
-  }
-  catch {
-    return {
-      kb: undefined,
-      locale: getDefaultLocale(config),
-      scopeLabel: undefined,
-    }
-  }
+  return result.scope
 }
 
 type KnowledgeBaseConfig = {
@@ -156,14 +169,19 @@ function getAssistantFsBackend(config: ReturnType<typeof useRuntimeConfig>) {
   return 'mcp'
 }
 
-function getGitFsRoot(assistantScope: ReturnType<typeof getAssistantScope>) {
-  if (!assistantScope.kb) {
-    return 'docs/content'
+function getGitFsRoot(assistantScope: AssistantScope) {
+  if (assistantScope.mode === 'kb') {
+    if (!assistantScope.kb || !assistantScope.locale) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'ASSISTANT_FS_BACKEND=gitfs requires a scoped knowledge base and locale.',
+      })
+    }
+
+    return `docs/content/${assistantScope.kb}/${assistantScope.locale}`
   }
 
-  return assistantScope.locale
-    ? `docs/content/${assistantScope.kb}/${assistantScope.locale}`
-    : `docs/content/${assistantScope.kb}`
+  return 'docs/content'
 }
 
 function pickTool(tools: ToolSet, name: string) {
@@ -183,7 +201,7 @@ function pickTool(tools: ToolSet, name: string) {
   return undefined
 }
 
-async function createMcpTools(event: H3Event, assistantScope: ReturnType<typeof getAssistantScope>) {
+async function createMcpTools(event: H3Event, assistantScope: AssistantScope) {
   const config = useRuntimeConfig(event)
   const mcpServer = config.assistant.mcpServer
   const isExternalUrl = mcpServer.startsWith('http://') || mcpServer.startsWith('https://')
@@ -267,16 +285,33 @@ async function createMcpTools(event: H3Event, assistantScope: ReturnType<typeof 
 
 export default defineEventHandler(async (event) => {
   const startedAt = performance.now()
-  const { messages } = await readBody(event)
+  assertMethod(event, 'POST')
+
+  const requestUrl = getRequestURL(event)
+  const requestPath = requestUrl.pathname
+  const originGuard = validateAssistantRequestOrigin({
+    requestOrigin: requestUrl.origin,
+    origin: getRequestHeader(event, 'origin'),
+    secFetchSite: getRequestHeader(event, 'sec-fetch-site'),
+  })
+  assertAssistantGuard(originGuard)
+
+  const rateLimit = checkAssistantRateLimit(getAssistantRateLimitKey(event), getAssistantRateLimitOptions())
+  if (!rateLimit.ok) {
+    setHeader(event, 'retry-after', rateLimit.retryAfterSeconds || 1)
+    throwAssistantGuardFailure(rateLimit)
+  }
+
+  const { messages: rawMessages } = await readAssistantRequestBody(event)
+  const messages = rawMessages as Parameters<typeof convertToModelMessages>[0]
   const config = useRuntimeConfig(event)
   const siteConfig = getSiteConfig(event)
   const siteName = siteConfig.name || 'Documentation'
-  const providerConfig = getAssistantProviderConfig(event)
   const assistantScope = getAssistantScope(event)
+  const providerConfig = getAssistantProviderConfig(event)
   const activeKb = getActiveKnowledgeBase(config, assistantScope)
   const requestedFsBackend = getAssistantFsBackend(config)
   let fsBackend = requestedFsBackend
-  const requestPath = getRequestURL(event).pathname
 
   const requestLog = {
     requestPath,
@@ -365,7 +400,7 @@ export default defineEventHandler(async (event) => {
     let indexContent = ''
 
     if (fsBackend === 'index') {
-      const indexScope = resolveIndexScope(config.public as Parameters<typeof resolveDocsRoute>[1], assistantScope)
+      const indexScope = resolveIndexScope(config.public as TockDocsPublicRuntimeConfig, assistantScope)
 
       if (!indexScope) {
         logAssistant('index_fallback', {

@@ -111,6 +111,73 @@ test('createGitFsBash initializes GitFS + bash with a mocked GitHub API', async 
   }
 })
 
+test('createGitFsBash caps eager blob prefetches', async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), 'tockdocs-gitfs-cap-'))
+  const cacheDir = join(tempRoot, 'cache')
+  const workspaceRoot = join(tempRoot, 'workspace')
+  const blobRequests: string[] = []
+
+  const fetchMock: typeof fetch = async (input) => {
+    const url = typeof input === 'string'
+      ? input
+      : input instanceof URL
+        ? input.toString()
+        : input.url
+
+    if (url.endsWith('/repos/taowang1993/tockdocs/commits/main')) {
+      return jsonResponse({
+        sha: 'commit-sha',
+        commit: {
+          tree: { sha: 'tree-sha' },
+          committer: { date: '2025-01-02T03:04:05.000Z' },
+        },
+      })
+    }
+
+    if (url.endsWith('/repos/taowang1993/tockdocs/git/trees/tree-sha?recursive=1')) {
+      return jsonResponse({
+        truncated: false,
+        tree: [
+          { path: 'docs/content/manual/en/one.md', type: 'blob', sha: 'one-blob', mode: '100644', size: 10 },
+          { path: 'docs/content/manual/en/two.md', type: 'blob', sha: 'two-blob', mode: '100644', size: 10 },
+          { path: 'docs/content/manual/en/three.md', type: 'blob', sha: 'three-blob', mode: '100644', size: 10 },
+        ],
+      })
+    }
+
+    const blobMatch = url.match(/\/repos\/taowang1993\/tockdocs\/git\/blobs\/(.+)$/)
+    if (blobMatch) {
+      blobRequests.push(blobMatch[1])
+      return jsonResponse({
+        encoding: 'base64',
+        content: encodeBase64(`# ${blobMatch[1]}\n`),
+      })
+    }
+
+    return jsonResponse({ message: `Unhandled request: ${url}` }, 404)
+  }
+
+  try {
+    await createGitFsBash({
+      githubToken: 'test-token',
+      owner: 'taowang1993',
+      repo: 'tockdocs',
+      ref: 'main',
+      root: 'docs/content/manual/en',
+      cacheDir,
+      workspaceRoot,
+      fetch: fetchMock,
+      prefetchFileLimit: 1,
+      prefetchConcurrency: 1,
+    })
+
+    assert.equal(blobRequests.length, 1)
+  }
+  finally {
+    rmSync(tempRoot, { recursive: true, force: true })
+  }
+})
+
 test('createBashTool formats command output and non-zero exits', async () => {
   const commands: string[] = []
   const bash = {
