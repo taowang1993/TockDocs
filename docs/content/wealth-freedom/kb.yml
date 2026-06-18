@@ -1,0 +1,10 @@
+id: wealth-freedom
+title: 通往财富自由之路
+description: 李笑来《通往财富自由之路》的中文读书笔记，围绕注意力、元认知、投资、个人商业模式与执行力展开。
+icon: i-lucide-route
+defaultLocale: zh
+entry: attention-cognition/attention
+locales:
+  - zh
+assistantName: 财富自由助手
+searchPlaceholder: 搜索财富自由笔记...
