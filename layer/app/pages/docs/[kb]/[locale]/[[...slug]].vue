@@ -39,6 +39,8 @@ defineOgImage('Docs', {
   title: title.value?.slice(0, 60),
   description: formatOgDescription(title.value, description.value),
 })
+
+const displayPage = computed(() => withoutDuplicateTitleHeading(page.value))
 </script>
 
 <template>
@@ -71,8 +73,8 @@ defineOgImage('Docs', {
 
     <UPageBody>
       <ContentRenderer
-        v-if="page"
-        :value="page"
+        v-if="displayPage"
+        :value="displayPage"
       />
 
       <div
@@ -114,11 +116,11 @@ defineOgImage('Docs', {
     </UPageBody>
 
     <template
-      v-if="page?.body?.toc?.links?.length && !(assistantHydrated && assistantOpen)"
+      v-if="displayPage?.body?.toc?.links?.length && !(assistantHydrated && assistantOpen)"
       #right
     >
       <DocsAsideRight
-        :page="page"
+        :page="displayPage"
       />
     </template>
   </UPage>
